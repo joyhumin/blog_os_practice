@@ -9,6 +9,7 @@ mod vga_buffer;
 
 use core::fmt::Write;
 use core::panic::PanicInfo;
+use x86_64::instructions::port::Port;
 
 static HELLO: &[u8] = b"Hello World!";
 
@@ -39,6 +40,8 @@ fn test_runner(tests: &[&dyn Fn()]) {
     for test in tests {
         test()
     }
+
+    exit_qemu(QemuExitCode::Success);
 }
 
 #[test_case]
@@ -46,4 +49,20 @@ fn trivial_assertion(){
     print!("trivial assertion ...");
     assert_eq!(1, 1);
     println!("[ok]");
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[repr(u32)]
+pub enum QemuExitCode{
+    Success = 0x10, // hexadecimal integers (base 16)
+    Failed = 0x11
+}
+
+pub fn exit_qemu(exit_code: QemuExitCode) {
+    use x86_64::instructions::port::Port;
+
+    unsafe {
+        let mut port = Port::new(0xf4); // iobase of isa-debug-exit
+        port.write(exit_code as u32);
+    }
 }
