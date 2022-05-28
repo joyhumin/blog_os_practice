@@ -44,24 +44,6 @@ fn panic(info: &PanicInfo) -> ! {
 
 // linker, combines the generated code into an executable.
 
-
-#[cfg(test)]
-fn test_runner(tests: &[&dyn Fn()]) {
-    serial_println!("Running {} tests", tests.len());
-    for test in tests {
-        test()
-    }
-
-    exit_qemu(QemuExitCode::Success);
-}
-
-#[test_case]
-fn trivial_assertion(){
-    serial_print!("trivial assertion... ");
-    assert_eq!(0, 1);
-    serial_println!("[ok]");
-}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[repr(u32)]
 pub enum QemuExitCode{
@@ -75,4 +57,33 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
         let mut port = Port::new(0xf4); // iobase of isa-debug-exit
         port.write(exit_code as u32);
     }
+}
+
+#[cfg(test)]
+fn test_runner(tests: &[&dyn Testable]) {
+    serial_println!("Running {} tests", tests.len());
+    for test in tests {
+        test.run();
+    }
+
+    exit_qemu(QemuExitCode::Success);
+}
+
+pub trait Testable {
+    fn run(&self) {}
+}
+
+impl<T> Testable for T
+where T: Fn(),
+{
+    fn run(&self) {
+        serial_print!("{}...\t", core::any::type_name::<T>()); // any::type_name will print out the function name.
+        self();
+        serial_println!("[Ok]");
+    }
+}
+
+#[test_case]
+fn trivial_assertion(){
+    assert_eq!(1, 1);
 }
