@@ -77,6 +77,7 @@ impl<T> Testable for T
 where T: Fn(),
 {
     fn run(&self) {
+        // \t character used to align Ok message.
         serial_print!("{}...\t", core::any::type_name::<T>()); // any::type_name will print out the function name.
         self();
         serial_println!("[Ok]");
