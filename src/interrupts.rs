@@ -6,6 +6,10 @@ lazy_static!{
     static ref IDT: InterruptDescriptorTable = {
         let mut idt = InterruptDescriptorTable::new();
         idt.breakpoint.set_handler_fn(breakpoint_handler);
+        // add double fault handler
+        // double fault is a special exception occurs when CPU fails to invoke an exception handler
+        idt.double_fault.set_handler_fn(double_fault_handler);
+
         idt
     };
 }
@@ -18,6 +22,13 @@ extern "x86-interrupt" fn breakpoint_handler(
     stack_frame: InterruptStackFrame
 ) {
     println!("EXCEPTION: BREAKPOINT\n{:#?}", stack_frame);
+}
+
+extern "x86-interrupt" fn double_fault_handler(
+    stack_frame: InterruptStackFrame, _error_code: u64
+) -> ! {
+    // format string: https://doc.rust-lang.org/std/fmt/index.html
+    panic!("EXCEPTION: DOUBLE FAULT\n{:#?}", stack_frame); // Pretty print Debug
 }
 
 #[test_case]
