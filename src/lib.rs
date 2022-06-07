@@ -79,4 +79,7 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 pub fn init() {
     gdt::init();
     interrupts::init_idt();
+    // initialise programmable Interrupt controller
+    unsafe { interrupts::PICS.lock().initialize()};
+    x86_64::instructions::interrupts::enable(); // executes the set inerrupts to enable external interrupts
 }
