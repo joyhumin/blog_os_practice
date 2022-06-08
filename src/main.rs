@@ -21,6 +21,8 @@ pub extern "C" fn _start() -> ! {
     println!("it did not crash");
 
     loop {
+        use blog_os::print;
+        print!("-");
     }
 }
 
