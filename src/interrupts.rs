@@ -5,7 +5,9 @@ use pc_keyboard::layouts;
 use pic8259::ChainedPics;
 use spin;
 use x86_64::instructions::port::Port;
-use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
+use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame, PageFaultErrorCode};
+use x86_64::structures::paging::page_table::PageTableEntry;
+use crate::hlt_loop;
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
@@ -21,7 +23,7 @@ lazy_static! {
 
         idt[InterruptIndex::Timer.as_usize()].set_handler_fn(timer_interrupt_handler);idt[InterruptIndex::Keyboard.as_usize()].set_handler_fn(keyboard_interrupt_handler);
 
-
+        idt.page_fault.set_handler_fn(page_fault_handler);
         idt
     };
 }
@@ -53,7 +55,7 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
 
 extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
     use x86_64::instructions::port::Port;
-    use pc_keyboard::{layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1};
+    use pc_keyboard::{DecodedKey, HandleControl, Keyboard, ScancodeSet1};
     use spin::Mutex;
 
     lazy_static! {
@@ -78,6 +80,19 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
         PICS.lock()
             .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
     }
+}
+
+extern "x86-interrupt" fn page_fault_handler(
+    stack_frame: InterruptStackFrame,
+    error_code: PageFaultErrorCode)
+{
+    use x86_64::registers::control::Cr2;
+
+    println!("EXCEPTION: PAGE FAULT");
+    println!("Access address: {:?}", Cr2::read());
+    println!("Error Cod: {:?}", error_code);
+    println!("{:#?}", stack_frame);
+    hlt_loop();
 }
 
 
@@ -107,5 +122,11 @@ impl InterruptIndex {
     fn as_usize(self) -> usize {
         usize::from(self.as_u8())
     }
+}
+
+#[repr(align(4096))]
+pub struct PageTable {
+    entries: [PageTableEntry; 512],
+
 }
 
